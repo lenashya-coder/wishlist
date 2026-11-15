@@ -49,7 +49,7 @@ input,textarea{font:inherit;color:inherit}
 .bulb{animation:twinkle 3.2s ease-in-out infinite}
 @keyframes twinkle{0%,100%{opacity:1}50%{opacity:.45}}
 
-/* ---------- НОВАЯ ШАПКА (HERO) ---------- */
+/* ---------- ШАПКА ---------- */
 header{max-width:1100px;margin:0 auto;padding:86px 22px 8px}
 .hero{display:flex;flex-direction:column;gap:28px;align-items:center}
 @media(min-width:800px){
@@ -255,7 +255,8 @@ let wishes = [], filter = 'all', loading = true;
 let mine = LS.get('wl_mine', {});                 
 let pass = LS.get('wl_pass', '');
 const wantAdmin = /[?&]admin/.test(location.search);
-let admin = false;
+// Включаем админку сразу, если в ссылке есть ?admin (без пароля)
+let admin = wantAdmin; 
 const DEMO = !API;
 
 const demoSeed = [
@@ -279,10 +280,7 @@ async function demoApi(a, d){
   if (a === 'list') return {ok:true, wishes:list};
   if (a === 'reserve'){ if (w.reserved) return {ok:false, error:'already'}; w.reserved = true; demoSet(list); return {ok:true, token:'demo-'+Date.now()} }
   if (a === 'unreserve'){ w.reserved = false; demoSet(list); return {ok:true} }
-  if (a === 'login') {
-    if (d.password === 'lena') return {ok:true};
-    return {ok:false, error:'wrong_pass'};
-  }
+  if (a === 'login') return {ok:true};
   if (a === 'save'){
     if (d.wish.id){ Object.assign(list.find(x => x.id === d.wish.id), d.wish) }
     else list.push(Object.assign({}, d.wish, {id:'d'+Date.now(), reserved:false}));
@@ -325,4 +323,5 @@ function hearts(x, y, n = 16){
     s.style.left = (x + (Math.random()*60 - 30)) + 'px'; s.style.top = y + 'px';
     s.style.setProperty('--dx', (Math.random()*220 - 110) + 'px');
     s.style.setProperty('--r', (Math.random()*80 - 40) + 'deg');
-    s.style.animationDelay = (
+    s.style.animationDelay = (Math.random()*.35) + 's';
+   
