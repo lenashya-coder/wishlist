@@ -5,11 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Вишлист Леночки 🤍</title>
 <meta name="description" content="Маленький список того, что меня порадует. Выбирай и бронируй — я не узнаю, кто ты 🤫">
-<meta property="og:title" content="Вишлист Леночки 🤍">
-<meta property="og:description" content="Выбирай подарок и бронируй — я получу весточку, но не узнаю, кто ты 🤫">
-<meta property="og:type" content="website">
-<meta property="og:image" content="https://lenashya-coder.github.io/wishlist/og.png">
-<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#FBF5EF">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤍</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -49,7 +44,7 @@ input,textarea{font:inherit;color:inherit}
 .bulb{animation:twinkle 3.2s ease-in-out infinite}
 @keyframes twinkle{0%,100%{opacity:1}50%{opacity:.45}}
 
-/* ---------- ШАПКА ---------- */
+/* ---------- НОВАЯ ШАПКА (HERO) ---------- */
 header{max-width:1100px;margin:0 auto;padding:86px 22px 8px}
 .hero{display:flex;flex-direction:column;gap:28px;align-items:center}
 @media(min-width:800px){
@@ -244,8 +239,7 @@ textarea.in{min-height:76px;resize:vertical}
 <div class="toast" id="toast"></div>
 <div id="abar"></div>
 
-<script>
-const API = ''; 
+<script>const API = ''; 
 const $ = s => document.querySelector(s);
 const LS = {
   get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d }catch(e){ return d } },
@@ -255,7 +249,6 @@ let wishes = [], filter = 'all', loading = true;
 let mine = LS.get('wl_mine', {});                 
 let pass = LS.get('wl_pass', '');
 const wantAdmin = /[?&]admin/.test(location.search);
-// Включаем админку сразу, если в ссылке есть ?admin (без пароля)
 let admin = wantAdmin; 
 const DEMO = !API;
 
@@ -324,4 +317,264 @@ function hearts(x, y, n = 16){
     s.style.setProperty('--dx', (Math.random()*220 - 110) + 'px');
     s.style.setProperty('--r', (Math.random()*80 - 40) + 'deg');
     s.style.animationDelay = (Math.random()*.35) + 's';
-   
+    s.style.fontSize = (16 + Math.random()*16) + 'px';
+    document.body.appendChild(s); setTimeout(() => s.remove(), 2400);
+  }
+}
+
+/* ---------- гирлянда ---------- */
+(function lights(){
+  const W = 1200, H = 64, n = 26, colors = ['#FFD49A','#FFC2B4','#FFE7C2','#F7B7A3'];
+  let path = 'M0 6', bulbs = '';
+  const seg = W / 3;
+  for (let s = 0; s < 3; s++){ const x0 = s*seg; path += ` Q${x0 + seg/2} 46 ${x0 + seg} 6` }
+  for (let i = 0; i < n; i++){
+    const x = (i + .5) * W / n, s = Math.floor(x / seg), t = (x - s*seg) / seg;
+    const y = (1-t)*(1-t)*6 + 2*(1-t)*t*46 + t*t*6;
+    const c = colors[i % colors.length], d = (i * .37 % 3).toFixed(2);
+    bulbs += `<g class="bulb" style="animation-delay:${d}s"><circle cx="${x}" cy="${y+9}" r="11" fill="${c}" opacity=".35" filter="url(#g)"/><rect x="${x-2.5}" y="${y}" width="5" height="4" rx="1" fill="#8A7268"/><ellipse cx="${x}" cy="${y+9}" rx="4.2" ry="5.6" fill="${c}"/></g>`;
+  }
+  $('#lights').innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMin slice"><defs><filter id="g" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="4"/></filter></defs><path d="${path}" fill="none" stroke="#8A7268" stroke-width="1.2" opacity=".6"/>${bulbs}</svg>`;
+})();
+
+/* ---------- отрисовка ---------- */
+function visible(){
+  return wishes.filter(w => filter === 'all' || (filter === 'free' && !w.reserved) || (filter === 'top' && w.top));
+}
+function render(){
+  const g = $('#grid');
+  if (loading){ g.innerHTML = Array.from({length:4}, () => '<div class="skel"><div></div><i></i><i style="width:40%"></i></div>').join(''); return }
+  const list = visible();
+  if (!list.length){
+    g.innerHTML = `<div class="empty"><b>${wishes.length ? 'здесь пока пусто' : 'скоро тут появятся желания'}</b>${wishes.length ? 'Загляни во вкладку «Все» 🤍' : 'Лена уже их записывает ✨'}</div>`;
+    return;
+  }
+  g.innerHTML = list.map((w, k) => {
+    const i = wishes.indexOf(w), isMine = !!mine[w.id];
+    let btn;
+    if (isMine) btn = `<button class="btn soft" data-a="mine">Ты даришь это 🤍</button>`;
+    else if (w.reserved) btn = `<button class="btn off" disabled>Уже занято</button>`;
+    else btn = `<button class="btn" data-a="res">Подарю это</button>`;
+    const n = (w.links || []).length;
+    return `<article class="card ${w.reserved ? 'res' : ''}" data-id="${esc(w.id)}" style="animation-delay:${Math.min(k,12)*.05}s">
+      <div class="ph">${img(w, i)}${w.top ? '<span class="top">очень хочу ♡</span>' : ''}${w.reserved ? `<div class="stamp"><span>${isMine ? 'это от тебя' : 'уже дарят'}</span></div>` : ''}</div>
+      <div class="cb">
+        <div class="t">${esc(w.title)}</div>
+        ${w.price ? `<div class="p">${esc(price(w.price))}</div>` : ''}
+        ${n ? `<div class="m">${n > 1 ? n + ' варианта, где купить' : shop(w.links[0].url)}</div>` : ''}
+        <div class="sp"></div>
+        ${admin ? `<div class="adm"><button data-a="edit">изменить</button><button data-a="up">выше</button><button data-a="down">ниже</button></div>` : btn}
+      </div></article>`;
+  }).join('');
+}
+
+$('#grid').addEventListener('click', e => {
+  const card = e.target.closest('.card'); if (!card) return;
+  const id = card.dataset.id, a = e.target.closest('[data-a]')?.dataset.a;
+  e.stopPropagation();
+  if (a === 'res') return askReserve(id);
+  if (a === 'mine') return openWish(id);
+  if (a === 'edit') return openEdit(id);
+  if (a === 'up' || a === 'down') return move(id, a === 'up' ? -1 : 1);
+  if (admin) return openEdit(id);
+  openWish(id);
+});
+$('#tabs').addEventListener('click', e => {
+  const b = e.target.closest('.tab'); if (!b) return;
+  filter = b.dataset.f;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t === b));
+  render();
+});
+
+/* ---------- шторка ---------- */
+function openSheet(html){
+  const s = $('#sheet');
+  s.innerHTML = `<div class="grab"></div><button class="x" onclick="closeSheet()" aria-label="Закрыть">×</button>` + html;
+  s.scrollTop = 0;
+  requestAnimationFrame(() => { $('#ov').classList.add('on'); s.classList.add('on') });
+  document.body.style.overflow = 'hidden';
+}
+function closeSheet(){ $('#ov').classList.remove('on'); $('#sheet').classList.remove('on'); document.body.style.overflow = '' }
+$('#ov').onclick = closeSheet;
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet() });
+// свайп вниз, чтобы закрыть
+(function(){ let y0 = null; const s = $('#sheet');
+  s.addEventListener('touchstart', e => { y0 = s.scrollTop <= 0 ? e.touches[0].clientY : null }, {passive:true});
+  s.addEventListener('touchmove', e => { if (y0 === null) return; const dy = e.touches[0].clientY - y0; if (dy > 0 && innerWidth < 720){ s.style.transition = 'none'; s.style.transform = `translateY(${dy}px)` } }, {passive:true});
+  s.addEventListener('touchend', e => { if (y0 === null) return; const dy = e.changedTouches[0].clientY - y0; s.style.transition = ''; s.style.transform = ''; if (dy > 110 && innerWidth < 720) closeSheet(); y0 = null });
+})();
+
+const byId = id => wishes.find(w => String(w.id) === String(id));
+
+function openWish(id){
+  const w = byId(id), i = wishes.indexOf(w), isMine = !!mine[id];
+  const links = (w.links || []).map(l => `<a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener"><span>${esc(shop(l.url))}${l.label ? `<small>${esc(l.label)}</small>` : ''}</span><em>открыть</em></a>`).join('');
+  let btn;
+  if (isMine) btn = `<button class="btn soft" onclick="askUnreserve('${esc(id)}')">Ты даришь это 🤍 · снять бронь</button>`;
+  else if (w.reserved) btn = `<button class="btn off" disabled>Кто-то уже готовит этот подарок 🤍</button>`;
+  else btn = `<button class="btn" onclick="askReserve('${esc(id)}')">Подарю это</button>`;
+  openSheet(`
+    <div class="big">${img(w, i)}</div>
+    <div class="sh-t">${esc(w.title)}</div>
+    ${w.price ? `<div class="sh-p">${esc(price(w.price))}</div>` : ''}
+    ${w.note ? `<div class="note">${esc(w.note)}</div>` : ''}
+    ${links ? `<div class="lab">${w.links.length > 1 ? 'Где можно купить — на выбор' : 'Где можно купить'}</div><div class="links">${links}</div>` : ''}
+    ${btn}
+    ${!w.reserved && !isMine ? '<p class="hint center">Бронь анонимная: я узнаю только, что подарок занят 🤫</p>' : ''}`);
+}
+
+function askReserve(id){
+  const w = byId(id);
+  openSheet(`<div class="center">
+    <div class="emo">🎁</div>
+    <h3>Подаришь «${esc(w.title)}»?</h3>
+    <p class="tx">Подарок закрепится за тобой, и больше никто не сможет его забронировать. Мне придёт уведомление, что он занят — но не придёт твоё имя 🤫</p>
+    <button class="btn" id="go" onclick="reserve('${esc(id)}', this)">Да, это подарю я</button>
+    <button class="btn line" onclick="openWish('${esc(id)}')">Подумаю ещё</button>
+    <p class="hint">Передумаешь — бронь можно снять с этого же телефона.</p></div>`);
+}
+async function reserve(id, el){
+  el.innerHTML = '<span class="spin"></span>'; el.disabled = true;
+  try{
+    const r = await api('reserve', {id});
+    if (r.ok){
+      mine[id] = r.token; LS.set('wl_mine', mine);
+      byId(id).reserved = true; render();
+      const b = el.getBoundingClientRect(); hearts(b.left + b.width/2, b.top);
+      openSheet(`<div class="center"><div class="emo">🤍</div><h3>Ура, подарок твой!</h3>
+        <p class="tx">Я получу весточку, что он занят, но не узнаю, что это ты. Спасибо, что ты такой тёплый человек ✨</p>
+        <button class="btn" onclick="closeSheet()">К вишлисту</button></div>`);
+    } else if (r.error === 'already'){
+      toast('Ой, кто-то успел чуть раньше 🙈'); closeSheet(); load();
+    } else throw r.error;
+  }catch(e){ toast('Не получилось, попробуй ещё раз 🤍'); el.disabled = false; el.textContent = 'Да, это подарю я' }
+}
+function askUnreserve(id){
+  const w = byId(id);
+  openSheet(`<div class="center"><div class="emo">🥺</div><h3>Снять бронь с «${esc(w.title)}»?</h3>
+    <p class="tx">Подарок снова станет свободным, и его сможет выбрать кто-то другой.</p>
+    <button class="btn" onclick="unreserve('${esc(id)}', this)">Да, снять бронь</button>
+    <button class="btn line" onclick="openWish('${esc(id)}')">Нет, оставить</button></div>`);
+}
+async function unreserve(id, el){
+  el.innerHTML = '<span class="spin"></span>'; el.disabled = true;
+  const r = await api('unreserve', {id, token: mine[id]}).catch(() => ({}));
+  if (r.ok){ delete mine[id]; LS.set('wl_mine', mine); byId(id).reserved = false; render(); closeSheet(); toast('Бронь снята 🤍') }
+  else { toast('Не получилось снять бронь'); el.disabled = false; el.textContent = 'Да, снять бронь' }
+}
+
+/* ---------- админка (БЕЗ ПАРОЛЯ) ---------- */
+function adminBar(){
+  $('#abar').innerHTML = admin ? `<div class="abar"><button class="main" onclick="openEdit()">+ Желание</button><button onclick="logout()">Выйти</button></div>` : '';
+}
+function logout(){ admin = false; adminBar(); render(); toast('Вышла из режима редактирования') }
+
+let draft = null;
+function openEdit(id){
+  const w = id ? byId(id) : null;
+  draft = w ? JSON.parse(JSON.stringify(w)) : {title:'', price:'', note:'', links:[{url:'',label:''}], image:'', top:false};
+  if (!draft.links.length) draft.links.push({url:'', label:''});
+  openSheet(`<h3>${w ? 'Изменить желание' : 'Новое желание ✨'}</h3>
+    <div class="f"><label>Что хочу</label><input class="in" id="e_t" value="${esc(draft.title)}" placeholder="Например, свеча с ароматом инжира"></div>
+    <div class="f"><label>Ссылки — можно несколько, на выбор</label><div id="e_links" class="f" style="margin:0"></div>
+      <button class="add" onclick="addLink()">+ ещё ссылка</button></div>
+    <div class="f"><label>Фото</label>
+      <div class="imgbox"><div class="imgprev" id="e_prev"></div>
+        <div class="imgbtns">
+          <button class="chip rose" onclick="pullPhoto()">Подтянуть по ссылке</button>
+          <button class="chip" onclick="$('#e_file').click()">Загрузить своё фото</button>
+          <input class="in" id="e_img" placeholder="или ссылка на картинку" value="${esc(draft.image && !draft.image.startsWith('data:') ? draft.image : '')}" style="font-size:13px;padding:10px 12px">
+          <button class="chip" onclick="setImg('')" style="background:none;padding:4px 2px;color:var(--muted)">убрать фото</button>
+        </div></div>
+      <input type="file" id="e_file" accept="image/*" hidden></div>
+    <div class="f"><label>Цена</label><input class="in" id="e_p" value="${esc(draft.price)}" placeholder="3500 или «от 2000»" inputmode="text"></div>
+    <div class="f"><label>Комментарий для друзей</label><textarea class="in" id="e_n" placeholder="Размер, цвет, любой вариант подойдёт…">${esc(draft.note)}</textarea></div>
+    <div class="tog" onclick="draft.top=!draft.top;this.querySelector('.sw').classList.toggle('on',draft.top)"><span>Очень-очень хочу ♡</span><span class="sw ${draft.top ? 'on' : ''}"></span></div>
+    <button class="btn" id="e_save" onclick="saveWish()">Сохранить</button>
+    ${w ? `<div class="row2"><button class="btn line danger" onclick="removeWish('${esc(w.id)}')">Удалить</button></div>` : ''}`);
+  drawLinks(); setImg(draft.image, true);
+  $('#e_img').onchange = e => setImg(e.target.value.trim());
+  $('#e_file').onchange = e => e.target.files[0] && uploadPhoto(e.target.files[0]);
+}
+function syncLinks(){
+  document.querySelectorAll('#e_links .lrow').forEach((r, i) => { draft.links[i] = {url: r.querySelector('.u').value.trim(), label: r.querySelector('.lb').value.trim()} });
+}
+function drawLinks(){
+  $('#e_links').innerHTML = draft.links.map((l, i) => `<div class="lrow">
+    <input class="in u" value="${esc(l.url)}" placeholder="https://… ссылка на товар" inputmode="url">
+    <input class="in lb" value="${esc(l.label)}" placeholder="подпись (необязательно)"">
+    <button class="del" onclick="syncLinks();draft.links.splice(${i},1);if(!draft.links.length)draft.links.push({url:'',label:''});drawLinks()">×</button></div>`).join('');
+  document.querySelectorAll('#e_links .u').forEach(inp => inp.addEventListener('change', () => { syncLinks(); if (!draft.image && inp.value.trim()) pullPhoto(true) }));
+}
+function addLink(){ syncLinks(); draft.links.push({url:'', label:''}); drawLinks(); const all = document.querySelectorAll('#e_links .u'); all[all.length-1].focus() }
+function setImg(u, silent){
+  draft.image = u || '';
+  const p = $('#e_prev'); if (!p) return;
+  p.innerHTML = u ? `<img src="${esc(u)}" referrerpolicy="no-referrer" onerror="this.remove()">` : '🎁';
+  if (!silent && $('#e_img')) $('#e_img').value = u && !u.startsWith('data:') ? u : '';
+}
+async function pullPhoto(auto){
+  syncLinks();
+  const url = draft.links.map(l => l.url).find(Boolean);
+  if (!url){ if (!auto) toast('Сначала вставь ссылку на товар'); return }
+  if (DEMO){ if (!auto) toast('В демо фото не подтягивается 🤍'); return }
+}
+function shrink(file){
+  return new Promise((res, rej) => {
+    const im = new Image(), url = URL.createObjectURL(file);
+    im.onload = () => {
+      const k = Math.min(1, 1400 / Math.max(im.width, im.height));
+      const c = document.createElement('canvas'); c.width = Math.round(im.width*k); c.height = Math.round(im.height*k);
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      res(c.toDataURL('image/jpeg', .86));
+    };
+    im.onerror = rej; im.src = url;
+  });
+}
+async function uploadPhoto(file){
+  $('#e_prev').innerHTML = '<span class="spin" style="color:var(--rose)"></span>';
+  try{
+    const data = await shrink(file);
+    setImg(data); 
+  }catch(e){ setImg(draft.image); toast('Не удалось загрузить фото') }
+}
+async function saveWish(){
+  syncLinks();
+  draft.title = $('#e_t').value.trim(); draft.price = $('#e_p').value.trim(); draft.note = $('#e_n').value.trim();
+  draft.links = draft.links.filter(l => l.url).map(l => ({url: /^https?:\/\//i.test(l.url) ? l.url : 'https://' + l.url, label: l.label}));
+  if (!draft.title){ toast('Напиши, что хочешь 🤍'); $('#e_t').focus(); return }
+  $('#e_save').innerHTML = '<span class="spin"></span>';
+  const wish = {id: draft.id, title: draft.title, price: draft.price, note: draft.note, links: draft.links, image: draft.image, top: draft.top};
+  const r = await api('save', {wish}).catch(() => ({}));
+  if (r.ok){ closeSheet(); toast('Сохранено 🤍'); load() }
+  else { $('#e_save').textContent = 'Сохранить'; toast('Не сохранилось, попробуй ещё') }
+}
+async function removeWish(id){
+  if (!confirm('Удалить это желание?')) return;
+  const r = await api('remove', {id}).catch(() => ({}));
+  if (r.ok){ closeSheet(); toast('Удалено'); load() }
+}
+async function move(id, d){
+  const i = wishes.findIndex(w => w.id === id), j = i + d;
+  if (j < 0 || j >= wishes.length) return;
+  [wishes[i], wishes[j]] = [wishes[j], wishes[i]]; render();
+  await api('reorder', {ids: wishes.map(w => w.id)}).catch(() => toast('Порядок не сохранился'));
+}
+
+/* ---------- загрузка ---------- */
+async function load(){
+  try{
+    const r = await api('list');
+    wishes = (r.wishes || []).map(w => Object.assign(w, {id: String(w.id)}));
+    for (const id in mine) if (!byId(id) || !byId(id).reserved) delete mine[id];
+    LS.set('wl_mine', mine);
+  }catch(e){ toast('Не удалось загрузить вишлист 🥺') }
+  loading = false; render();
+}
+
+if (DEMO) $('#demoNote').innerHTML = '<div class="demo">демо-режим · сайт ещё не подключён</div>';
+if (admin) adminBar();
+render(); load();
+</script>
+</body>
+</html>
