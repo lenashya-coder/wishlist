@@ -208,7 +208,6 @@ textarea.in{min-height:76px;resize:vertical}
 
 <header>
   <div class="hero">
-    <!-- ТУТ ФОТОГРАФИЯ (теперь .jpeg) -->
     <img src="main-photo.jpeg" alt="Подарок" class="hero-img">
     <div class="hero-text">
       <span class="kicker">мой маленький список счастья</span>
@@ -323,4 +322,7 @@ function hearts(x, y, n = 16){
   for (let i = 0; i < n; i++){
     const s = document.createElement('span'); s.className = 'fly';
     s.textContent = set[i % set.length];
-    s
+    s.style.left = (x + (Math.random()*60 - 30)) + 'px'; s.style.top = y + 'px';
+    s.style.setProperty('--dx', (Math.random()*220 - 110) + 'px');
+    s.style.setProperty('--r', (Math.random()*80 - 40) + 'deg');
+    s.style.animationDelay = (
